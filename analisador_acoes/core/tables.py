@@ -13,7 +13,7 @@ from .ranking import RankingResult
 class Column:
     key: str
     title: str
-    kind: str          # text | int | pct | vol | score | pp | bool
+    kind: str          # text | int | pct | vol | score | pp | bool | money
     width: int = 90
     anchor: str = "e"  # alinhamento na tela (w, center, e)
 
@@ -21,6 +21,7 @@ class Column:
 RANKING_COLUMNS: List[Column] = [
     Column("pos", "Pos.", "int", 60, "center"),
     Column("ticker", "Ativo", "text", 90, "w"),
+    Column("price", "Valor Ação (R$)", "money", 125),
     Column("taxa", "Taxa de Acerto", "pct", 130),
     Column("gain", "Qtd Gain", "int", 80),
     Column("loss", "Qtd Loss", "int", 80),
@@ -35,7 +36,7 @@ def ranking_rows(result: RankingResult) -> List[Dict[str, Any]]:
     out = []
     for r in result.rows:
         rec = r.record
-        out.append({"pos": r.pos, "ticker": rec.ticker, "taxa": rec.taxa, "gain": rec.qtd_gain,
+        out.append({"pos": r.pos, "ticker": rec.ticker, "price": result.prices.get(rec.ticker), "taxa": rec.taxa, "gain": rec.qtd_gain,
                     "loss": rec.qtd_loss, "ops": rec.ops, "volume": rec.volume,
                     "wilson": r.wilson, "score": r.score})
     return out
@@ -43,6 +44,7 @@ def ranking_rows(result: RankingResult) -> List[Dict[str, Any]]:
 
 EXCLUDED_COLUMNS: List[Column] = [
     Column("ticker", "Ativo", "text", 90, "w"),
+    Column("price", "Valor Ação (R$)", "money", 125),
     Column("volume", "Méd. Volume Leilão", "vol", 165),
     Column("ops", "Operações", "int", 90),
     Column("gain", "Qtd Gain", "int", 80),
@@ -52,9 +54,9 @@ EXCLUDED_COLUMNS: List[Column] = [
 
 def excluded_rows(result: RankingResult) -> List[Dict[str, Any]]:
     out = []
-    for e in result.excluded_volume + result.excluded_filters:
+    for e in result.excluded_volume + result.excluded_filters + result.excluded_price:
         r = e.record
-        out.append({"ticker": r.ticker, "volume": r.volume, "ops": r.ops,
+        out.append({"ticker": r.ticker, "price": result.prices.get(r.ticker), "volume": r.volume, "ops": r.ops,
                     "gain": r.qtd_gain, "reason": e.reason})
     return out
 
@@ -62,6 +64,7 @@ def excluded_rows(result: RankingResult) -> List[Dict[str, Any]]:
 def comparison_columns(la: str, lb: str) -> List[Column]:
     return [
         Column("ticker", "Ativo", "text", 90, "w"),
+        Column("price", "Valor Ação (R$)", "money", 125),
         Column("pos_a", f"Pos. {la}", "int", 70, "center"),
         Column("pos_b", f"Pos. {lb}", "int", 70, "center"),
         Column("taxa_a", f"Taxa {la}", "pct", 85),
@@ -88,7 +91,7 @@ def comparison_rows(matches: List[MatchRow]) -> List[Dict[str, Any]]:
     for m in matches:
         a, b = m.a.record, m.b.record
         out.append({
-            "ticker": m.ticker, "pos_a": m.a.pos, "pos_b": m.b.pos,
+            "ticker": m.ticker, "price": m.price, "pos_a": m.a.pos, "pos_b": m.b.pos,
             "taxa_a": a.taxa, "taxa_b": b.taxa, "delta": m.delta_taxa,
             "gain_a": a.qtd_gain, "gain_b": b.qtd_gain, "loss_a": a.qtd_loss, "loss_b": b.qtd_loss,
             "ops_a": a.ops, "ops_b": b.ops, "vol_a": a.volume, "vol_b": b.volume,
@@ -109,6 +112,8 @@ def comparison_summary(c: ComparisonResult) -> List[tuple]:
         (f"Somente em {c.label_b}", len(c.only_b)),
         ("Descartados pelo volume (nos dois arquivos)", c.dropped_volume),
         ("Descartados pelo mínimo de operações/gain", c.dropped_filters),
+    ] + ([("Descartados pelo valor da ação (abaixo de R$ " + f"{c.config.min_price:.2f}".replace(".", ",") + " ou sem cotação)", c.dropped_price)]
+         if c.config.min_price is not None else []) + [
         ("Descartados pelo limite de melhores", c.dropped_top_n),
         ("Critério de seleção", lim),
         ("Matches finais", len(c.matches)),

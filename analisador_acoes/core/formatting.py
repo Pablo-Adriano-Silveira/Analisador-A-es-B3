@@ -22,6 +22,8 @@ def fmt_value(kind: str, v: Any) -> str:
         return fmt_dec(v, 2) + "%"
     if kind == "score":
         return fmt_dec(v, 2)
+    if kind == "money":
+        return "R$ " + fmt_dec(v, 2)
     if kind == "pp":
         return ("+" if v > 0 else "") + fmt_dec(v, 2) + " p.p."
     if kind == "bool":

@@ -24,6 +24,7 @@ class MatchRow:
     ticker: str
     a: RankedRow            # configuração A (ex.: 2%)
     b: RankedRow            # configuração B (ex.: 1%)
+    price: Optional[float] = None   # valor da ação (R$), quando consultado
 
     @property
     def volume_divergent(self) -> bool:
@@ -66,6 +67,7 @@ class ComparisonResult:
     ranking_b: RankingResult
     volume_divergences: int     # tickers em ambos com volumes diferentes entre os arquivos
     notes: List[str]
+    dropped_price: int = 0      # reprovados pelo valor mínimo da ação / sem cotação
 
 
 # Opções de ordenação: nome na interface -> (função chave, decrescente?)
@@ -89,10 +91,13 @@ def sort_matches(matches: List[MatchRow], option: str) -> List[MatchRow]:
 
 
 def compare(load_a: LoadResult, load_b: LoadResult, config: ScoringConfig,
-            label_a: str = "2%", label_b: str = "1%", limit_top_n: int = 0) -> ComparisonResult:
+            label_a: str = "2%", label_b: str = "1%", limit_top_n: int = 0,
+            prices: Optional[Dict[str, float]] = None) -> ComparisonResult:
     config.validate()
-    rank_a = rank_records(load_a.records, config)
-    rank_b = rank_records(load_b.records, config)
+    rank_a = rank_records(load_a.records, config, prices)
+    rank_b = rank_records(load_b.records, config, prices)
+    filt_a = {e.record.ticker for e in rank_a.excluded_filters}
+    filt_b = {e.record.ticker for e in rank_b.excluded_filters}
 
     rec_a = {r.ticker: r for r in load_a.records}
     rec_b = {r.ticker: r for r in load_b.records}
@@ -104,7 +109,7 @@ def compare(load_a: LoadResult, load_b: LoadResult, config: ScoringConfig,
     only_b = sorted(set(rec_b) - set(rec_a))
 
     matches: List[MatchRow] = []
-    dropped_volume = dropped_filters = dropped_top = divergences = 0
+    dropped_volume = dropped_filters = dropped_price = dropped_top = divergences = 0
     for t in both:
         if rec_a[t].volume != rec_b[t].volume:
             divergences += 1
@@ -112,12 +117,15 @@ def compare(load_a: LoadResult, load_b: LoadResult, config: ScoringConfig,
             dropped_volume += 1
             continue
         if t not in pos_a or t not in pos_b:
-            dropped_filters += 1
+            if t in filt_a or t in filt_b:
+                dropped_filters += 1
+            else:
+                dropped_price += 1      # só sobra o filtro de valor da ação / sem cotação
             continue
         if limit_top_n > 0 and (pos_a[t].pos > limit_top_n or pos_b[t].pos > limit_top_n):
             dropped_top += 1
             continue
-        matches.append(MatchRow(t, pos_a[t], pos_b[t]))
+        matches.append(MatchRow(t, pos_a[t], pos_b[t], (prices or {}).get(t)))
 
     matches = sort_matches(matches, "Nota média")
 
@@ -137,5 +145,5 @@ def compare(load_a: LoadResult, load_b: LoadResult, config: ScoringConfig,
         only_a=only_a, only_b=only_b,
         dropped_volume=dropped_volume, dropped_filters=dropped_filters, dropped_top_n=dropped_top,
         matches=matches, ranking_a=rank_a, ranking_b=rank_b,
-        volume_divergences=divergences, notes=notes,
+        volume_divergences=divergences, notes=notes, dropped_price=dropped_price,
     )

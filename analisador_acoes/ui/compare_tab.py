@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import Dict, List, Optional
 
+from ..core.analysis import gather_prices
 from ..core.comparison import SORT_OPTIONS, ComparisonResult, compare, sort_matches
 from ..core.csv_loader import load_csv
 from ..core.exporter import export_csv, export_xlsx
@@ -73,6 +74,7 @@ class _ComparePane(ttk.Frame):
             return
         try:
             cfg = self.app.get_config()
+            price_opts = self.app.price_options()
             limit = int(self.var_limit.get().strip() or "0")
             if limit < 0:
                 raise ValueError
@@ -82,7 +84,14 @@ class _ComparePane(ttk.Frame):
             return
 
         def work():
-            return compare(load_csv(pa), load_csv(pb), cfg, LABEL_A, LABEL_B, limit)
+            la, lb = load_csv(pa), load_csv(pb)
+            prices = None
+            if price_opts:
+                prices = gather_prices(
+                    [la.records, lb.records], cfg, price_opts.token, price_opts.refresh,
+                    progress=lambda d, t: self.app.report_progress(f"Buscando preços online… {d}/{t}"),
+                    notify=self.app.report_progress)
+            return compare(la, lb, cfg, LABEL_A, LABEL_B, limit, prices)
 
         self.app.set_busy(True, f"Comparando arquivos de {self.side.lower()}…")
         run_in_background(self, work, self._done, self._failed)

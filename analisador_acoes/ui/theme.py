@@ -54,6 +54,7 @@ def apply_theme(root: tk.Tk) -> None:
     style.map("Accent.TButton", background=[("active", ACCENT_DARK), ("disabled", "#9DBCF0")],
               foreground=[("disabled", "#F0F4FC")])
 
+    style.configure("TCheckbutton", background=BG, foreground=TEXT)
     style.configure("TEntry", fieldbackground="white", bordercolor=BORDER, padding=4)
     style.configure("TSpinbox", fieldbackground="white", bordercolor=BORDER, padding=3)
     style.configure("TCombobox", fieldbackground="white", bordercolor=BORDER, padding=3)

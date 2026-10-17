@@ -6,7 +6,8 @@ from typing import Dict, Optional, Tuple
 
 from ..core.csv_loader import load_csv
 from ..core.exporter import export_csv, export_xlsx
-from ..core.formatting import fmt_int
+from ..core.analysis import gather_prices
+from ..core.formatting import fmt_dec, fmt_int
 from ..core.models import DataError, LoadResult
 from ..core.ranking import RankingResult, rank_records
 from ..core.tables import (EXCLUDED_COLUMNS, RANKING_COLUMNS, excluded_rows, ranking_rows)
@@ -46,6 +47,9 @@ class _SidePane(ttk.Frame):
             f"Excluídas por mín. de {cfg.min_ops} operações / sem Gain: {fmt_int(len(res.excluded_filters))}",
             f"Elegíveis ao ranking: {fmt_int(res.eligible)}   |   Exibidas: {fmt_int(len(res.rows))}",
         ]
+        if cfg.min_price is not None:
+            lines.insert(2, f"Valor da ação ≥ R$ {fmt_dec(cfg.min_price)}: reprovadas por valor abaixo do mínimo: "
+                            f"{fmt_int(res.price_low)}   |   sem cotação: {fmt_int(res.price_missing)}")
         self.summary.config(text="\n".join(lines))
         warns = list(load.warnings)
         if res.eligible < cfg.top_n:
@@ -115,18 +119,26 @@ class RankingTab(ttk.Frame):
             return
         try:
             cfg = self.app.get_config()
+            price_opts = self.app.price_options()
         except ValueError as exc:
             messagebox.showerror("Parâmetros inválidos", str(exc))
             return
 
         def work():
-            out = {}
+            loads, out = {}, {}
             for side, path in paths.items():
                 try:
-                    load = load_csv(path)
-                    out[side] = ("ok", load, rank_records(load.records, cfg))
+                    loads[side] = load_csv(path)
                 except DataError as exc:
                     out[side] = ("err", str(exc))
+            prices = None
+            if price_opts and loads:
+                prices = gather_prices(
+                    [ld.records for ld in loads.values()], cfg, price_opts.token, price_opts.refresh,
+                    progress=lambda d, t: self.app.report_progress(f"Buscando preços online… {d}/{t}"),
+                    notify=self.app.report_progress)
+            for side, load in loads.items():
+                out[side] = ("ok", load, rank_records(load.records, cfg, prices))
             return out
 
         self.app.set_busy(True, "Analisando arquivos…")
@@ -157,6 +169,10 @@ class RankingTab(ttk.Frame):
 
     def _failed(self, exc):
         self.app.set_busy(False)
+        if isinstance(exc, DataError):
+            self.app.set_status("Falha ao obter os preços.", error=True)
+            messagebox.showerror("Falha ao obter os preços", str(exc))
+            return
         self.app.set_status("Erro inesperado.", error=True)
         messagebox.showerror("Erro inesperado", f"{type(exc).__name__}: {exc}")
 
@@ -197,6 +213,8 @@ class RankingTab(ttk.Frame):
                 (f"[{side}] Aprovadas no filtro de volume (> {fmt_int(c.min_volume)})", res.volume_ok),
                 (f"[{side}] Excluídas por volume", len(res.excluded_volume)),
                 (f"[{side}] Excluídas por mín. de {c.min_ops} operações / sem Gain", len(res.excluded_filters)),
+                *(([(f"[{side}] Reprovadas por valor da ação (< R$ {fmt_dec(c.min_price)})", res.price_low),
+                    (f"[{side}] Sem cotação", res.price_missing)]) if c.min_price is not None else []),
                 (f"[{side}] Elegíveis", res.eligible),
                 (f"[{side}] Exibidas", len(res.rows)),
             ]

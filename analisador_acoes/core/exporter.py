@@ -10,7 +10,7 @@ from .models import DataError
 from .tables import Column
 
 XLSX_FORMATS = {
-    "int": "#,##0", "vol": "#,##0", "pct": '0.00"%"', "score": "0.00",
+    "int": "#,##0", "vol": "#,##0", "pct": '0.00"%"', "score": "0.00", "money": '"R$" #,##0.00',
     "pp": '+0.00" p.p.";-0.00" p.p.";0.00" p.p."',
 }
 
@@ -22,6 +22,8 @@ def _csv_cell(kind: str, v: Any) -> str:
         return "Sim" if v else "Não"
     if kind in ("int", "vol"):
         return str(int(round(v)))
+    if kind == "money":
+        return f"{v:.2f}".replace(".", ",")
     if kind in ("pct", "score", "pp"):
         return f"{v:.4f}".replace(".", ",")
     return str(v)

@@ -44,6 +44,28 @@ Percentil usa posto médio para empates: `posto / n` (Gain e Wilson); para Qtd L
 * Notas calculadas separadamente em cada arquivo. Ordenação: nota média (padrão), pior nota, taxa 2%/1%, menor diferença de taxa, volume, ativo.
 * O resumo mostra: presentes nos dois / só em cada um / descartados por volume, por operações e pelo limite de melhores.
 
+## Valor da ação (filtro online, opcional)
+
+Marque **"Filtrar pelo valor da ação (online)"**, informe o **valor mínimo em R$** (padrão 4,00) e cole a **chave da API do
+brapi.dev** (https://brapi.dev/dashboard). Desmarcado, o programa continua 100% offline e a coluna fica vazia ("—").
+
+* Fonte: `GET https://brapi.dev/api/v2/stocks/quote?symbols=TICKER`, com `Authorization: Bearer <chave>`; usa `regularMarketPrice`.
+  No plano gratuito são 15.000 requisições/mês, 1 ticker por chamada e atraso de ~30 min nas cotações
+  (confira os limites atuais no site; podem mudar).
+* Regra: **valor ≥ mínimo** passa (R$ 4,00 exato passa). É aplicada junto com volume e operações, **antes da pontuação**.
+* Só são consultadas as ações que já passaram em volume, operações e Gain (≈ 190 chamadas por rodada). Compra e venda,
+  1% e 2% compartilham as consultas, e o resultado fica em cache por 6 horas (use **Ignorar cache** para forçar atualização).
+* **Sem cotação** (ticker não encontrado, preço ausente ou inválido) → ação excluída com o motivo "Sem cotação". Nunca vira zero.
+* As consultas são feitas **uma de cada vez** (o brapi limita chamadas simultâneas; excesso gera erro 429). Em caso de 429, o
+  programa espera o tempo informado pela API (`Retry-After`) e tenta de novo, até 4 vezes; a barra de status mostra a espera.
+  A primeira rodada leva cerca de 1–2 minutos; as seguintes usam o cache.
+* Erro de chave (401/403), 429 persistente (cota mensal esgotada ou limite do plano) ou falta de internet **interrompem a análise**
+  com mensagem clara (não se monta ranking com preços pela metade). Os preços já obtidos ficam no cache; é só rodar de novo.
+* O botão **Testar chave** consulta PETR4 para confirmar que a chave e a conexão funcionam.
+* A chave é salva só no seu computador, em `%APPDATA%\AnalisadorAcoes\settings.json` (texto simples), e nunca vai no código
+  nem no `.exe`. Também vale a variável de ambiente `BRAPI_TOKEN` se o campo estiver vazio. Se compartilhou a chave em algum
+  lugar, gere outra no painel do brapi.dev.
+
 ## Executar em desenvolvimento
 
 1. Instale o Python 3.10+ (https://www.python.org/downloads/) marcando **Add python.exe to PATH**.
@@ -76,7 +98,8 @@ Se o antivírus reclamar do `.exe` (comum em executáveis PyInstaller sem assina
 
 ```
 main.py                         ponto de entrada
-analisador_acoes/core/          sem interface: csv_loader, ranking, comparison, tables, formatting, exporter, models
+analisador_acoes/core/          sem interface: csv_loader, ranking, comparison, price_service (brapi), analysis, settings,
+                                tables, formatting, exporter, models
 analisador_acoes/ui/            tkinter: app, ranking_tab, compare_tab, widgets, theme, tasks (processamento em thread)
 tests/                          test_core.py (sintético), test_real_files.py (CSVs reais), ui_smoke.py (interface)
 sample_data/                    os 4 CSVs usados na validação
@@ -85,6 +108,7 @@ sample_data/                    os 4 CSVs usados na validação
 ## Testes
 
 ```
-python -m unittest discover -s tests -v          # núcleo + CSVs reais (27 testes)
+python -m unittest discover -s tests -v          # núcleo, preços (API simulada) e CSVs reais (48 testes)
 python tests/ui_smoke.py                          # simula o uso da interface (precisa de tela)
+python tests/ui_smoke_price.py                    # idem, com o filtro de valor da ação (API simulada)
 ```

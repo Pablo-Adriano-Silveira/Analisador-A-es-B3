@@ -55,7 +55,7 @@ class RealFiles(unittest.TestCase):
                 self.assertEqual(scores, sorted(scores, reverse=True))
                 self.assertEqual(len(res.rows), min(40, res.eligible))
                 self.assertFalse({"WINFUT", "WDOFUT"} & {r.record.ticker for r in res.ranked})
-                self.assertEqual(res.total, len(res.excluded_volume) + len(res.excluded_filters) + res.eligible)
+                self.assertEqual(res.total, len(res.excluded_volume) + len(res.excluded_filters) + len(res.excluded_price) + res.eligible)
 
     def test_compare_both_sides(self):
         cfg = ScoringConfig()
