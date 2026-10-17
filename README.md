@@ -1,4 +1,6 @@
-# Analisador de Ações
+# Analisador de Ações B3 — Compra e Venda
+
+Desenvolvido por Pablo Adriano.
 
 Programa de análise estatística para Windows (interface gráfica, 100% offline) que lê CSVs de compra e venda,
 monta o ranking das 40 melhores ações e compara configurações (2% x 1%).
@@ -62,9 +64,10 @@ brapi.dev** (https://brapi.dev/dashboard). Desmarcado, o programa continua 100% 
 * Erro de chave (401/403), 429 persistente (cota mensal esgotada ou limite do plano) ou falta de internet **interrompem a análise**
   com mensagem clara (não se monta ranking com preços pela metade). Os preços já obtidos ficam no cache; é só rodar de novo.
 * O botão **Testar chave** consulta PETR4 para confirmar que a chave e a conexão funcionam.
-* A chave é salva só no seu computador, em `%APPDATA%\AnalisadorAcoes\settings.json` (texto simples), e nunca vai no código
-  nem no `.exe`. Também vale a variável de ambiente `BRAPI_TOKEN` se o campo estiver vazio. Se compartilhou a chave em algum
-  lugar, gere outra no painel do brapi.dev.
+* A chave **não é gravada em disco**: fica só na memória enquanto o programa está aberto e precisa ser colada de novo a cada
+  vez que abrir. Nunca vai no código nem no `.exe`. (Só se você mesmo definir a variável de ambiente `BRAPI_TOKEN` ela será usada
+  quando o campo estiver vazio.) O que fica salvo em `%APPDATA%\AnalisadorAcoes\` são apenas o valor mínimo, o filtro
+  ligado/desligado e o cache de preços. Se compartilhou a chave em algum lugar, gere outra no painel do brapi.dev.
 
 ## Executar em desenvolvimento
 

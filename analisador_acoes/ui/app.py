@@ -26,7 +26,10 @@ class App(tk.Tk):
         self._busy = False
         self._progress_msg = ""
         saved = load_settings()
-        self.title("Analisador de Ações — Ranking de Compra e Venda")
+        if "brapi_token" in saved:          # versões antigas gravavam a chave: apaga do disco
+            saved.pop("brapi_token")
+            save_settings(saved)
+        self.title("Analisador de Ações B3 -- Compra e Venda - Desenvolvido por Pablo Adriano")
         self.geometry("1320x820")
         self.minsize(1050, 650)
         theme.apply_theme(self)
@@ -34,8 +37,8 @@ class App(tk.Tk):
         # Cabeçalho
         head = ttk.Frame(self, style="Header.TFrame", padding=(16, 10))
         head.pack(fill="x")
-        ttk.Label(head, text="Analisador de Ações", style="Title.TLabel").pack(anchor="w")
-        ttk.Label(head, text="Ranking estatístico de compra e venda · Comparativo entre configurações",
+        ttk.Label(head, text="Analisador de Ações B3 — Compra e Venda", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(head, text="Desenvolvido por Pablo Adriano  ·  Ranking estatístico de compra e venda · Comparativo entre configurações",
                   style="Subtitle.TLabel").pack(anchor="w")
 
         # Parâmetros compartilhados pelas duas abas
@@ -54,7 +57,7 @@ class App(tk.Tk):
         pr.pack(fill="x")
         self.var_use_price = tk.BooleanVar(value=bool(saved.get("use_price", False)))
         self.var_min_price = tk.StringVar(value=str(saved.get("min_price", "4,00")))
-        self.var_token = tk.StringVar(value=str(saved.get("brapi_token", "")))
+        self.var_token = tk.StringVar(value="")      # a chave NUNCA é lida nem gravada em disco
         self.var_refresh = tk.BooleanVar(value=False)
         ttk.Checkbutton(pr, text="Filtrar pelo valor da ação (online) — valor mínimo R$:",
                         variable=self.var_use_price).pack(side="left")
@@ -122,9 +125,9 @@ class App(tk.Tk):
         return PriceOptions(token, bool(self.var_refresh.get()))
 
     def persist_settings(self):
+        # Salva só preferências. A chave da API fica apenas na memória enquanto o programa está aberto.
         save_settings({"use_price": bool(self.var_use_price.get()),
-                       "min_price": self.var_min_price.get().strip(),
-                       "brapi_token": self.var_token.get().strip()})
+                       "min_price": self.var_min_price.get().strip()})
 
     def _on_close(self):
         self.persist_settings()

@@ -58,7 +58,11 @@ def snap(app, name):
         print("sem screenshot:", exc)
 
 
+from analisador_acoes.core.settings import load_settings, save_settings  # noqa: E402
+save_settings({"use_price": True, "min_price": "4,00", "brapi_token": "CHAVE-ANTIGA-NO-DISCO"})   # versão antiga
 app = App()
+assert "brapi_token" not in load_settings(), "chave antiga deveria ter sido apagada do disco"
+assert app.var_token.get() == "", "a chave não deve ser carregada do disco"
 app.update()
 main_nb = [w for w in app.winfo_children() if w.winfo_class() == "TNotebook"][0]
 rank_tab, cmp_tab = main_nb.winfo_children()[0], main_nb.winfo_children()[1]
@@ -127,7 +131,13 @@ snap(app, "aba2_preco.png")
 
 # 7) Persistência das configurações
 app._on_close() if False else app.persist_settings()
-from analisador_acoes.core.settings import load_settings
-print("Salvo:", {k: (v if k != "brapi_token" else "***") for k, v in load_settings().items()})
+saved = load_settings()
+print("Salvo:", saved)
+assert "brapi_token" not in saved
+home = os.environ["ANALISADOR_ACOES_HOME"]
+for fn in os.listdir(home):                                   # nenhum arquivo contém a chave digitada
+    with open(os.path.join(home, fn), encoding="utf-8") as fh:
+        assert "CHAVE-TESTE" not in fh.read(), fn
+print("Chave não encontrada em nenhum arquivo salvo.")
 app.destroy()
 print("UI PRECO OK")

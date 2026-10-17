@@ -1,6 +1,6 @@
-"""Configurações do usuário (chave da API, preço mínimo...) salvas em JSON na pasta do usuário.
-Windows: %APPDATA%\\AnalisadorAcoes\\settings.json. A chave fica em texto simples nesse arquivo local;
-ela nunca é gravada no código nem enviada a ninguém além do próprio brapi.dev."""
+"""Preferências do usuário (valor mínimo da ação, filtro ligado/desligado) em JSON na pasta do usuário.
+Windows: %APPDATA%\\AnalisadorAcoes\\settings.json. A chave da API NÃO é gravada aqui nem em nenhum outro arquivo:
+ela existe só na memória enquanto o programa está aberto."""
 from __future__ import annotations
 
 import json
