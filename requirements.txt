@@ -1,0 +1,2 @@
+# Dependências para EXECUTAR o programa (tkinter já vem com o Python do Windows)
+openpyxl>=3.1
