@@ -13,7 +13,7 @@ from .ranking_tab import RankingTab
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Analisador de Ações — Ranking de Compra e Venda")
+        self.title("Analisador de Ações — Compra e Venda - Desenvolvido Por Pablo Adriano.")
         self.geometry("1320x820")
         self.minsize(1050, 650)
         theme.apply_theme(self)
